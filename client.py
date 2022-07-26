@@ -1,14 +1,28 @@
 """
     Python 3
-    Usage: python3 TCPClient3.py localhost 12000
+    Usage: python3 client.py localhost 12000
     coding: utf-8
     
-    Author: Wei Song (Tutor for COMP3331/9331)
+    Author: Joel Huang 
+    Starter code sourced from Wei Song
 """
 from socket import *
 import sys
+import json
+
+COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
 
 def handleLogin(username, password, clientSocket):
+    message = {
+        'type': 'login',
+        'username': username,
+        'password': password,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    # clientSocket.sendall(message.encode())
+    data = clientSocket.recv(1024)
+    receivedMessage = data.decode()
+    
     pass
 
 def connectToServer(host, port, client_udp_port):
@@ -25,9 +39,13 @@ def connectToServer(host, port, client_udp_port):
 
     print("> Welcome to TOOM!")
     
+    handleLogin(username, password, clientSocket)
 
     while True:
-        input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+        command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+
+        if command not in COMMANDS:
+            print("> Error. Invalid command!")
         
     # close the socket
     clientSocket.close()

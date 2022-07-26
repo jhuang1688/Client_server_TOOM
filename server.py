@@ -1,14 +1,16 @@
 """
     Sample code for Multi-Threaded Server
     Python 3
-    Usage: python3 TCPserver3.py localhost 12000
+    Usage: python3 server.py localhost 12000
     coding: utf-8
     
-    Author: Wei Song (Tutor for COMP3331/9331)
+    Author: Joel Huang 
+    Starter code sourced from Wei Song
 """
 from socket import *
 from threading import Thread
 import sys, select
+import json
 
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
@@ -43,12 +45,13 @@ class ClientThread(Thread):
         self.clientAlive = True
         
     def run(self):
-        message = ''
+        message = 'Hello'
         
         while self.clientAlive:
             # use recv() to receive message from the client
             data = self.clientSocket.recv(1024)
-            message = data.decode()
+            # message = data.decode()
+            message = json.loads(data.decode('utf-8'))
             
             # if the message from client is empty, the client would be off-line then set the client as offline (alive=Flase)
             if message == '':
@@ -57,9 +60,9 @@ class ClientThread(Thread):
                 break
             
             # handle message from the client
-            if message == 'login':
+            if message['type'] == 'login':
                 print("[recv] New login request")
-                self.process_login()
+                self.process_login(message)
             elif message == 'download':
                 print("[recv] Download request")
                 message = 'download filename'
@@ -78,7 +81,22 @@ class ClientThread(Thread):
             message = 'user credentials request'
             self.clientSocket.send(message.encode())
     """
-    def process_login(self):
+    def process_login(self, message):
+        credentials = {}
+        with open('credentials.txt') as file:
+            for user in file.readlines():
+                pairs = user.split(' ')
+                credentials[pairs[0]] = pairs[1].strip()
+
+        # print(credentials)
+        # print(message)
+
+        if message['username'] in credentials:
+            if message['password'] == credentials[message['username']]: 
+                print("CORRECT Credentials")
+        else:
+            print("INCORRECT Credentials")
+
         message = 'user credentials request'
         print('[send] ' + message);
         self.clientSocket.send(message.encode())
