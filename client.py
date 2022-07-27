@@ -9,21 +9,54 @@
 from socket import *
 import sys
 import json
+import os
 
 COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
 
-def handleLogin(username, password, clientSocket):
+def login(username, password, clientSocket):
     message = {
         'type': 'login',
         'username': username,
         'password': password,
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-    # clientSocket.sendall(message.encode())
-    data = clientSocket.recv(1024)
-    receivedMessage = data.decode()
-    
-    pass
+
+    unsuccessfulLogin = 0
+    while True:
+        receivedSentence = clientSocket.recv(1024)
+        received = receivedSentence.decode('utf-8')
+        #print('>>>>>>>>>>>>>>>>>>>>>>')
+        #print(received)
+        if received == 'AUTHENTICATED':
+            print('> Welcome to the TOOM!')
+            break
+        elif received == 'INVALID CREDENTIALS':
+            unsuccessfulLogin += 1
+            print("unsuccessfulLogin = " + str(unsuccessfulLogin))
+            print('number_of_consecutive_failed_attempts = ' + os.getenv('ALLOWED_FAILS'))
+            # if unsuccessfulLogin == 3:
+            if unsuccessfulLogin == os.getenv('allowed_fails'):
+                print('Invalid Password. Your account has been blocked. Please try again later')
+                exit()
+            # print(received)
+            print('> Invalid Password. Please try again')
+            newpassword = input('> Password: ')
+            message['password'] = newpassword
+            clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+            continue
+
+    return
+
+def logout(username, clientSocket):
+    message = {
+        'type':'logout',
+        'username': username
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    #print(tempid)
+    print('Bye ' + username + '!')
+    clientSocket.close()
+    exit()
 
 def connectToServer(host, port, client_udp_port):
     serverHost = host
@@ -36,16 +69,16 @@ def connectToServer(host, port, client_udp_port):
     # Login attempts
     username = input('> Username: ')
     password = input('> Password: ')
-
-    print("> Welcome to TOOM!")
     
-    handleLogin(username, password, clientSocket)
+    login(username, password, clientSocket)
 
     while True:
         command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
 
         if command not in COMMANDS:
             print("> Error. Invalid command!")
+        elif command == 'OUT':
+            logout(username, clientSocket)
         
     # close the socket
     clientSocket.close()

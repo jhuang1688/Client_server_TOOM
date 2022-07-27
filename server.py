@@ -11,15 +11,17 @@ from socket import *
 from threading import Thread
 import sys, select
 import json
+import os
 
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
     print("\n===== Error usage, python3 TCPServer3.py SERVER_PORT NUM_CONSECUTIVE_FAILED_ATTEMPTS ======\n")
     exit(0)
-# serverHost = "10.11.0.3"
 serverHost = "localhost"
 serverPort = int(sys.argv[1])
 number_of_consecutive_failed_attempts = int(sys.argv[2])
+os.environ['ALLOWED_FAILS'] = sys.argv[2]
+print('number_of_consecutive_failed_attempts = ' + os.getenv('ALLOWED_FAILS'))
 serverAddress = (serverHost, serverPort)
 
 # define socket for the server side and bind address
@@ -63,6 +65,12 @@ class ClientThread(Thread):
             if message['type'] == 'login':
                 print("[recv] New login request")
                 self.process_login(message)
+            elif message['type'] == 'logout':
+                print("[recv] Logout requested")
+                message = 'logout user'
+                print("[send] " + message)
+                self.clientAlive = False
+                continue
             elif message == 'download':
                 print("[recv] Download request")
                 message = 'download filename'
@@ -94,11 +102,28 @@ class ClientThread(Thread):
         if message['username'] in credentials:
             if message['password'] == credentials[message['username']]: 
                 print("CORRECT Credentials")
+                message = 'AUTHENTICATED'
+                print(message)
+                self.clientSocket.send(message.encode())
+            else:
+                print("INCORRECT Password")
+                message = 'INVALID CREDENTIALS'
+                print(message)
+                self.clientSocket.send(message.encode())
         else:
             print("INCORRECT Credentials")
+            message = 'INVALID CREDENTIALS'
+            print(message)
+            self.clientSocket.send(message.encode())
 
-        message = 'user credentials request'
-        print('[send] ' + message);
+        # message = 'user credentials request'
+        # print('[send] ' + message)
+        # self.clientSocket.send(message.encode())
+    
+    def process_logout(self, message):
+        message = 'logout requested'
+        print('[send] ' + message)
+        self.clientAlive = False
         self.clientSocket.send(message.encode())
 
 
