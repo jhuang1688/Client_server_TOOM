@@ -12,6 +12,7 @@ from threading import Thread
 import sys, select
 import json
 import os
+from datetime import datetime
 
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
@@ -23,8 +24,6 @@ if int(sys.argv[2]) > 5 or int(sys.argv[2]) < 1:
 serverHost = "localhost"
 serverPort = int(sys.argv[1])
 number_of_consecutive_failed_attempts = int(sys.argv[2])
-os.environ['ALLOWED_FAILS'] = sys.argv[2]
-print('number_of_consecutive_failed_attempts = ' + os.getenv('ALLOWED_FAILS'))
 serverAddress = (serverHost, serverPort)
 
 # define socket for the server side and bind address
@@ -45,6 +44,8 @@ class ClientThread(Thread):
         self.clientAddress = clientAddress
         self.clientSocket = clientSocket
         self.clientAlive = False
+
+        self.blockedSince = datetime.timestamp(datetime.now())
         
         print("===== New connection created for: ", clientAddress)
         self.clientAlive = True
@@ -105,6 +106,10 @@ class ClientThread(Thread):
         # Blocking of user
         if 'block' in message and message['block'] == True:
             self.clientAlive = False
+            dt = datetime.now()
+            ts = datetime.timestamp(dt)
+            self.blockedSince = dt
+            print(self.blockedSince)
             return
 
         if message['username'] in credentials:

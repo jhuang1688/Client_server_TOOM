@@ -32,9 +32,9 @@ def login(username, password, clientSocket):
             break
         else:
             unsuccessfulLogin += 1
-            print(f'num attempts allowed: ' + str(received))
-            print(int(received))
-            print("unsuccessfulLogin = " + str(unsuccessfulLogin))
+            # print(f'num attempts allowed: ' + str(received))
+            # print(int(received))
+            # print("unsuccessfulLogin = " + str(unsuccessfulLogin))
             if unsuccessfulLogin == int(received):
                 print('Invalid Password. Your account has been blocked. Please try again later')
                 message['block'] = True
@@ -72,6 +72,21 @@ def logout(username, clientSocket):
     clientSocket.close()
     exit()
 
+def broadcastMessage():
+    pass
+
+def displayActiveUsers():
+    pass
+
+def separateRoomBuilding():
+    pass
+
+def separateRoomMessage():
+    pass
+
+def readMessage():
+    pass
+
 def connectToServer(host, port, client_udp_port):
     serverHost = host
     serverPort = port
@@ -93,6 +108,16 @@ def connectToServer(host, port, client_udp_port):
             print("> Error. Invalid command!")
         elif command == 'OUT':
             logout(username, clientSocket)
+        elif command = 'BCM':
+            broadcastMessage()
+        elif command = 'ATU':
+            displayActiveUsers()
+        elif command = 'SRB':
+            separateRoomBuilding()
+        elif command = 'SRM':
+            separateRoomMessage()
+        elif command = 'RDM':
+            readMessage()
         
     # close the socket
     clientSocket.close()
