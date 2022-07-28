@@ -17,6 +17,9 @@ import os
 if len(sys.argv) != 3:
     print("\n===== Error usage, python3 TCPServer3.py SERVER_PORT NUM_CONSECUTIVE_FAILED_ATTEMPTS ======\n")
     exit(0)
+if int(sys.argv[2]) > 5 or int(sys.argv[2]) < 1:
+    print("\n===== Error usage: Invalid number of allowed failed consecutive attempt: number. The valid value of argument number is an integer between 1 and 5\n")
+    exit(0)
 serverHost = "localhost"
 serverPort = int(sys.argv[1])
 number_of_consecutive_failed_attempts = int(sys.argv[2])
@@ -99,6 +102,11 @@ class ClientThread(Thread):
         # print(credentials)
         # print(message)
 
+        # Blocking of user
+        if 'block' in message and message['block'] == True:
+            self.clientAlive = False
+            return
+
         if message['username'] in credentials:
             if message['password'] == credentials[message['username']]: 
                 print("CORRECT Credentials")
@@ -107,12 +115,14 @@ class ClientThread(Thread):
                 self.clientSocket.send(message.encode())
             else:
                 print("INCORRECT Password")
-                message = 'INVALID CREDENTIALS'
+                # message = 'INVALID CREDENTIALS'
+                message = str(number_of_consecutive_failed_attempts)
                 print(message)
                 self.clientSocket.send(message.encode())
         else:
-            print("INCORRECT Credentials")
-            message = 'INVALID CREDENTIALS'
+            # print("INCORRECT Credentials")
+            # message = 'INVALID CREDENTIALS'
+            message = str(number_of_consecutive_failed_attempts)
             print(message)
             self.clientSocket.send(message.encode())
 

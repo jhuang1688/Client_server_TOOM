@@ -30,13 +30,15 @@ def login(username, password, clientSocket):
         if received == 'AUTHENTICATED':
             print('> Welcome to the TOOM!')
             break
-        elif received == 'INVALID CREDENTIALS':
+        else:
             unsuccessfulLogin += 1
+            print(f'num attempts allowed: ' + str(received))
+            print(int(received))
             print("unsuccessfulLogin = " + str(unsuccessfulLogin))
-            print('number_of_consecutive_failed_attempts = ' + os.getenv('ALLOWED_FAILS'))
-            # if unsuccessfulLogin == 3:
-            if unsuccessfulLogin == os.getenv('allowed_fails'):
+            if unsuccessfulLogin == int(received):
                 print('Invalid Password. Your account has been blocked. Please try again later')
+                message['block'] = True
+                clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
                 exit()
             # print(received)
             print('> Invalid Password. Please try again')
@@ -44,6 +46,18 @@ def login(username, password, clientSocket):
             message['password'] = newpassword
             clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
             continue
+        # elif received == 'INVALID CREDENTIALS':
+        #     unsuccessfulLogin += 1
+        #     print("unsuccessfulLogin = " + str(unsuccessfulLogin))
+        #     if unsuccessfulLogin == 3:
+        #         print('Invalid Password. Your account has been blocked. Please try again later')
+        #         exit()
+        #     # print(received)
+        #     print('> Invalid Password. Please try again')
+        #     newpassword = input('> Password: ')
+        #     message['password'] = newpassword
+        #     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+        #     continue
 
     return
 

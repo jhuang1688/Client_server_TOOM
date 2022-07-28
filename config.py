@@ -1,0 +1,3 @@
+import server
+
+number_of_consecutive_failed_attempts = server.number_of_consecutive_failed_attempts
