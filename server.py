@@ -30,6 +30,9 @@ serverAddress = (serverHost, serverPort)
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(serverAddress)
 
+# define structure for users and the time they login
+clientStatus = {}
+
 """
     Define multi-thread class for client
     This class would be used to define the instance for each connection from each client
@@ -46,6 +49,7 @@ class ClientThread(Thread):
         self.clientAlive = False
 
         self.blockedSince = datetime.timestamp(datetime.now())
+        # clientStatus[clientAddress] = self.blockedSince
         
         print("===== New connection created for: ", clientAddress)
         self.clientAlive = True
@@ -110,14 +114,29 @@ class ClientThread(Thread):
             ts = datetime.timestamp(dt)
             self.blockedSince = dt
             print(self.blockedSince)
+            clientStatus[message['username']] = ts
+            print(clientStatus)
             return
 
         if message['username'] in credentials:
+            
+            # Logic underneath deals with blocked user first
+            dt = datetime.now()
+            ts = datetime.timestamp(dt)
+            if message['username'] in clientStatus and ts - clientStatus[message['username']] < 10:
+                print('logged in b4 10 secoinds cuz')
+                message = 'LOCKED USER'
+                print(message)
+                self.clientAlive = False
+                self.clientSocket.send(message.encode())
+                return
+
             if message['password'] == credentials[message['username']]: 
                 print("CORRECT Credentials")
                 message = 'AUTHENTICATED'
                 print(message)
                 self.clientSocket.send(message.encode())
+                # print(clientStatus)
             else:
                 print("INCORRECT Password")
                 # message = 'INVALID CREDENTIALS'

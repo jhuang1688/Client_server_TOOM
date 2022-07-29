@@ -23,36 +23,40 @@ def login(username, password, clientSocket):
 
     unsuccessfulLogin = 0
     while True:
-        receivedSentence = clientSocket.recv(1024)
-        received = receivedSentence.decode('utf-8')
+        serverResponse = clientSocket.recv(1024)
+        response = serverResponse.decode('utf-8')
         #print('>>>>>>>>>>>>>>>>>>>>>>')
-        #print(received)
-        if received == 'AUTHENTICATED':
+        #print(response)
+        if response == 'AUTHENTICATED':
             print('> Welcome to the TOOM!')
             break
+        elif response == 'LOCKED USER':
+            print('> Your account is blocked due to multiple login failures. Please try again later')
+            clientSocket.close()
+            exit()
         else:
             unsuccessfulLogin += 1
-            # print(f'num attempts allowed: ' + str(received))
-            # print(int(received))
+            # print(f'num attempts allowed: ' + str(response))
+            # print(int(response))
             # print("unsuccessfulLogin = " + str(unsuccessfulLogin))
-            if unsuccessfulLogin == int(received):
+            if unsuccessfulLogin == int(response):
                 print('Invalid Password. Your account has been blocked. Please try again later')
                 message['block'] = True
                 clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
                 exit()
-            # print(received)
+            # print(response)
             print('> Invalid Password. Please try again')
             newpassword = input('> Password: ')
             message['password'] = newpassword
             clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
             continue
-        # elif received == 'INVALID CREDENTIALS':
+        # elif response == 'INVALID CREDENTIALS':
         #     unsuccessfulLogin += 1
         #     print("unsuccessfulLogin = " + str(unsuccessfulLogin))
         #     if unsuccessfulLogin == 3:
         #         print('Invalid Password. Your account has been blocked. Please try again later')
         #         exit()
-        #     # print(received)
+        #     # print(response)
         #     print('> Invalid Password. Please try again')
         #     newpassword = input('> Password: ')
         #     message['password'] = newpassword
@@ -108,15 +112,15 @@ def connectToServer(host, port, client_udp_port):
             print("> Error. Invalid command!")
         elif command == 'OUT':
             logout(username, clientSocket)
-        elif command = 'BCM':
+        elif command == 'BCM':
             broadcastMessage()
-        elif command = 'ATU':
+        elif command == 'ATU':
             displayActiveUsers()
-        elif command = 'SRB':
+        elif command == 'SRB':
             separateRoomBuilding()
-        elif command = 'SRM':
+        elif command == 'SRM':
             separateRoomMessage()
-        elif command = 'RDM':
+        elif command == 'RDM':
             readMessage()
         
     # close the socket
