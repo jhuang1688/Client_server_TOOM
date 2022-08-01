@@ -85,11 +85,26 @@ def broadcastMessage(username, clientSocket, messageToBroadcast):
         'messageToBroadcast': messageToBroadcast,
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-    
-    pass
 
-def displayActiveUsers():
-    pass
+def displayActiveUsers(username, clientSocket):
+    message = {
+        'type': 'ATU',
+        'username': username,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        # print(type(response))
+        users = response['otherActiveUsers']
+        if len(users) == 0:
+            print('No active users active.')
+        for user in users:
+            if user[0] == username:
+                continue
+            print(f'    > {user[0]}, active since {user[1]}')
+        break
 
 def separateRoomBuilding():
     pass
@@ -126,10 +141,10 @@ def connectToServer(host, port, client_udp_port):
                 print('> Please write a message')
                 continue
             messageToBroadcast = command.split(' ', 1)[1]
-            print(messageToBroadcast)
+            # print(messageToBroadcast)
             broadcastMessage(username, clientSocket, messageToBroadcast)
         elif command[0:3] == 'ATU':
-            displayActiveUsers()
+            displayActiveUsers(username, clientSocket)
         elif command[0:3] == 'SRB':
             separateRoomBuilding()
         elif command[0:3] == 'SRM':
