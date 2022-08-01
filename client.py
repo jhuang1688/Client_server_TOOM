@@ -1,14 +1,94 @@
 """
     Python 3
-    Usage: python3 TCPClient3.py localhost 12000
+    Usage: python3 client.py localhost 12000
     coding: utf-8
     
-    Author: Wei Song (Tutor for COMP3331/9331)
+    Author: Joel Huang 
+    Starter code sourced from Wei Song
 """
 from socket import *
 import sys
+import json
+import os
 
-def handleLogin(username, password, clientSocket):
+COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
+
+def login(username, password, clientSocket):
+    message = {
+        'type': 'login',
+        'username': username,
+        'password': password,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    unsuccessfulLogin = 0
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = serverResponse.decode('utf-8')
+        #print('>>>>>>>>>>>>>>>>>>>>>>')
+        #print(response)
+        if response == 'AUTHENTICATED':
+            print('> Welcome to the TOOM!')
+            break
+        elif response == 'LOCKED USER':
+            print('> Your account is blocked due to multiple login failures. Please try again later')
+            clientSocket.close()
+            exit()
+        else:
+            unsuccessfulLogin += 1
+            # print(f'num attempts allowed: ' + str(response))
+            # print(int(response))
+            # print("unsuccessfulLogin = " + str(unsuccessfulLogin))
+            if unsuccessfulLogin == int(response):
+                print('Invalid Password. Your account has been blocked. Please try again later')
+                message['block'] = True
+                clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+                exit()
+            # print(response)
+            print('> Invalid Password. Please try again')
+            newpassword = input('> Password: ')
+            message['password'] = newpassword
+            clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+            continue
+        # elif response == 'INVALID CREDENTIALS':
+        #     unsuccessfulLogin += 1
+        #     print("unsuccessfulLogin = " + str(unsuccessfulLogin))
+        #     if unsuccessfulLogin == 3:
+        #         print('Invalid Password. Your account has been blocked. Please try again later')
+        #         exit()
+        #     # print(response)
+        #     print('> Invalid Password. Please try again')
+        #     newpassword = input('> Password: ')
+        #     message['password'] = newpassword
+        #     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+        #     continue
+
+    return
+
+def logout(username, clientSocket):
+    message = {
+        'type':'logout',
+        'username': username
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    #print(tempid)
+    print('Bye ' + username + '!')
+    clientSocket.close()
+    exit()
+
+def broadcastMessage():
+    pass
+
+def displayActiveUsers():
+    pass
+
+def separateRoomBuilding():
+    pass
+
+def separateRoomMessage():
+    pass
+
+def readMessage():
     pass
 
 def connectToServer(host, port, client_udp_port):
@@ -22,12 +102,26 @@ def connectToServer(host, port, client_udp_port):
     # Login attempts
     username = input('> Username: ')
     password = input('> Password: ')
-
-    print("> Welcome to TOOM!")
     
+    login(username, password, clientSocket)
 
     while True:
-        input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+        command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+
+        if command not in COMMANDS:
+            print("> Error. Invalid command!")
+        elif command == 'OUT':
+            logout(username, clientSocket)
+        elif command == 'BCM':
+            broadcastMessage()
+        elif command == 'ATU':
+            displayActiveUsers()
+        elif command == 'SRB':
+            separateRoomBuilding()
+        elif command == 'SRM':
+            separateRoomMessage()
+        elif command == 'RDM':
+            readMessage()
         
     # close the socket
     clientSocket.close()
