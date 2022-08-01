@@ -76,7 +76,14 @@ def logout(username, clientSocket):
     clientSocket.close()
     exit()
 
-def broadcastMessage():
+def broadcastMessage(username, clientSocket, messageToBroadcast):
+    message = {
+        'type': 'BCM',
+        'username': username,
+        'messageToBroadcast': messageToBroadcast,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    
     pass
 
 def displayActiveUsers():
@@ -108,19 +115,24 @@ def connectToServer(host, port, client_udp_port):
     while True:
         command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
 
-        if command not in COMMANDS:
+        if command[0:3] not in COMMANDS:
             print("> Error. Invalid command!")
-        elif command == 'OUT':
+        elif command[0:3] == 'OUT':
             logout(username, clientSocket)
-        elif command == 'BCM':
-            broadcastMessage()
-        elif command == 'ATU':
+        elif command[0:3] == 'BCM':
+            if command == 'BCM':
+                print('> Please write a message')
+                continue
+            messageToBroadcast = command.split(' ', 1)[1]
+            print(messageToBroadcast)
+            broadcastMessage(username, clientSocket, messageToBroadcast)
+        elif command[0:3] == 'ATU':
             displayActiveUsers()
-        elif command == 'SRB':
+        elif command[0:3] == 'SRB':
             separateRoomBuilding()
-        elif command == 'SRM':
+        elif command[0:3] == 'SRM':
             separateRoomMessage()
-        elif command == 'RDM':
+        elif command[0:3] == 'RDM':
             readMessage()
         
     # close the socket

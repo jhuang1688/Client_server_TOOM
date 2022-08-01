@@ -21,7 +21,7 @@ if len(sys.argv) != 3:
 if int(sys.argv[2]) > 5 or int(sys.argv[2]) < 1:
     print("\n===== Error usage: Invalid number of allowed failed consecutive attempt: number. The valid value of argument number is an integer between 1 and 5\n")
     exit(0)
-serverHost = "localhost"
+serverHost = "127.0.0.1"
 serverPort = int(sys.argv[1])
 number_of_consecutive_failed_attempts = int(sys.argv[2])
 serverAddress = (serverHost, serverPort)
@@ -30,8 +30,11 @@ serverAddress = (serverHost, serverPort)
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(serverAddress)
 
+open('messagelog.txt', 'w').close()
+
 # define structure for users and the time they login
 clientStatus = {}
+messages = []
 
 """
     Define multi-thread class for client
@@ -48,6 +51,7 @@ class ClientThread(Thread):
         self.clientSocket = clientSocket
         self.clientAlive = False
 
+        # self.messageCount = 0
         self.blockedSince = datetime.timestamp(datetime.now())
         # clientStatus[clientAddress] = self.blockedSince
         
@@ -75,10 +79,15 @@ class ClientThread(Thread):
                 self.process_login(message)
             elif message['type'] == 'logout':
                 print("[recv] Logout requested")
-                message = 'logout user'
-                print("[send] " + message)
+                # message = 'logout user'
                 self.clientAlive = False
+                user = message['username']
+                print(f'> ' + user + ' has logged out')
                 continue
+            elif message['type'] == 'BCM':
+                print("[recv] Broadcast message requested")
+                self.broadcastMessage(message)
+                # self.clientSocket.send(message.encode())
             elif message == 'download':
                 print("[recv] Download request")
                 message = 'download filename'
@@ -136,7 +145,6 @@ class ClientThread(Thread):
                 message = 'AUTHENTICATED'
                 print(message)
                 self.clientSocket.send(message.encode())
-                # print(clientStatus)
             else:
                 print("INCORRECT Password")
                 # message = 'INVALID CREDENTIALS'
@@ -150,23 +158,39 @@ class ClientThread(Thread):
             print(message)
             self.clientSocket.send(message.encode())
 
-        # message = 'user credentials request'
-        # print('[send] ' + message)
-        # self.clientSocket.send(message.encode())
-    
     def process_logout(self, message):
         message = 'logout requested'
         print('[send] ' + message)
         self.clientAlive = False
         self.clientSocket.send(message.encode())
 
+    def broadcastMessage(self, message):
+        dt = datetime.now()
+        ts = datetime.timestamp(dt)
+
+        formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
+        # messageCount += 1
+        # print(messageCount)
+        messages.append(message)
+        count = len(messages)
+        user = message['username']
+        messageToBroadcast = message['messageToBroadcast']
+
+        print(f'> {user} broadcasted BCM #{count} "{messageToBroadcast}" at {formatTimestamp}.')
+
+        appendToMessageLog = f'{count}; {formatTimestamp}; {user}; {messageToBroadcast}'
+
+        with open('messagelog.txt', mode='a') as log:
+          log.write(appendToMessageLog + '\n')
+
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")
-
 
 while True:
     serverSocket.listen()
     clientSockt, clientAddress = serverSocket.accept()
     clientThread = ClientThread(clientAddress, clientSockt)
     clientThread.start()
+
+print('run after ending')
