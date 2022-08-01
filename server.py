@@ -30,10 +30,14 @@ serverAddress = (serverHost, serverPort)
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(serverAddress)
 
+# Clear .txt logs
+open('userlog.txt', 'w').close()
 open('messagelog.txt', 'w').close()
 
-# define structure for users and the time they login
+# define structure for users and the time they login, and messages and their timestamps
+global clientStatus, activeUsers, messages
 clientStatus = {}
+activeUsers = []
 messages = []
 
 """
@@ -83,16 +87,17 @@ class ClientThread(Thread):
                 self.clientAlive = False
                 user = message['username']
                 print(f'> ' + user + ' has logged out')
+                self.process_logout(message)
                 continue
             elif message['type'] == 'BCM':
                 print("[recv] Broadcast message requested")
                 self.broadcastMessage(message)
                 # self.clientSocket.send(message.encode())
-            elif message == 'download':
-                print("[recv] Download request")
-                message = 'download filename'
-                print("[send] " + message)
-                self.clientSocket.send(message.encode())
+            elif message['type'] == 'ATU':
+                print("[recv] Download Active Users requested")
+                self.sendUsersToClient(message)
+                # print("[send] " + message)
+                # self.clientSocket.send(message.encode())
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -113,64 +118,77 @@ class ClientThread(Thread):
                 pairs = user.split(' ')
                 credentials[pairs[0]] = pairs[1].strip()
 
-        # print(credentials)
-        # print(message)
-
         # Blocking of user
         if 'block' in message and message['block'] == True:
             self.clientAlive = False
             dt = datetime.now()
             ts = datetime.timestamp(dt)
             self.blockedSince = dt
-            print(self.blockedSince)
             clientStatus[message['username']] = ts
-            print(clientStatus)
             return
 
         if message['username'] in credentials:
-            
             # Logic underneath deals with blocked user first
             dt = datetime.now()
             ts = datetime.timestamp(dt)
             if message['username'] in clientStatus and ts - clientStatus[message['username']] < 10:
-                print('logged in b4 10 secoinds cuz')
-                message = 'LOCKED USER'
-                print(message)
                 self.clientAlive = False
-                self.clientSocket.send(message.encode())
+                self.clientSocket.send(response.encode())
                 return
 
             if message['password'] == credentials[message['username']]: 
-                print("CORRECT Credentials")
-                message = 'AUTHENTICATED'
-                print(message)
-                self.clientSocket.send(message.encode())
+                dt = datetime.now()
+                ts = datetime.timestamp(dt)
+
+                user = message['username']
+                formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
+                clientIP = message['clientIP']
+                clientUDP = message['clientUDP']
+
+                activeUsers.append((user, formatTimestamp, clientIP, clientUDP))
+                response = 'AUTHENTICATED'
+                self.clientSocket.send(response.encode())
+
+                # Userlog things
+                open('userlog.txt', 'w').close()
+                with open('userlog.txt', mode='a') as log:
+                    i = 0
+                    seqNum = 1
+                    while i < len(activeUsers):
+                        appendToUserLog = f'{seqNum}; {activeUsers[i][1]}; {activeUsers[i][0]}; {activeUsers[i][2]}; {activeUsers[i][3]}'
+                        log.write(appendToUserLog + '\n')
+                        i += 1
+                        seqNum += 1
             else:
-                print("INCORRECT Password")
-                # message = 'INVALID CREDENTIALS'
-                message = str(number_of_consecutive_failed_attempts)
-                print(message)
-                self.clientSocket.send(message.encode())
+                response = str(number_of_consecutive_failed_attempts)
+                print(response)
+                self.clientSocket.send(response.encode())
         else:
-            # print("INCORRECT Credentials")
-            # message = 'INVALID CREDENTIALS'
-            message = str(number_of_consecutive_failed_attempts)
-            print(message)
-            self.clientSocket.send(message.encode())
+            response = str(number_of_consecutive_failed_attempts)
+            print(response)
+            self.clientSocket.send(response.encode())
 
     def process_logout(self, message):
-        message = 'logout requested'
-        print('[send] ' + message)
-        self.clientAlive = False
-        self.clientSocket.send(message.encode())
+        global activeUsers
+        activeUsers = list(filter(lambda x: x[0] != message['username'], activeUsers))
+
+        # print("active users: " + str(activeUsers))
+        open('userlog.txt', 'w').close()
+        with open('userlog.txt', mode='a') as log:
+            i = 0
+            seqNum = 1
+            while i < len(activeUsers):
+                # appendToUserLog = f'{activeUsers[i]}'
+                appendToUserLog = f'{seqNum}; {activeUsers[i][1]}; {activeUsers[i][0]}; {activeUsers[i][2]}; {activeUsers[i][3]}'
+                log.write(appendToUserLog + '\n')
+                i += 1
+                seqNum += 1
 
     def broadcastMessage(self, message):
         dt = datetime.now()
         ts = datetime.timestamp(dt)
 
         formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
-        # messageCount += 1
-        # print(messageCount)
         messages.append(message)
         count = len(messages)
         user = message['username']
@@ -179,9 +197,22 @@ class ClientThread(Thread):
         print(f'> {user} broadcasted BCM #{count} "{messageToBroadcast}" at {formatTimestamp}.')
 
         appendToMessageLog = f'{count}; {formatTimestamp}; {user}; {messageToBroadcast}'
-
         with open('messagelog.txt', mode='a') as log:
           log.write(appendToMessageLog + '\n')
+
+    def sendUsersToClient(self, message):
+        global activeUsers
+
+        otherActiveUsers = list(filter(lambda x: x[0] != message['username'], activeUsers))
+        print("other users " + str(otherActiveUsers))
+        print("all active users " + str(activeUsers))
+
+        response = {
+            'otherActiveUsers': otherActiveUsers,
+        }
+        print(response)
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+        pass
 
 
 print("\n===== Server is running =====")

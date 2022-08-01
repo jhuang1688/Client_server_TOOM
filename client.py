@@ -18,6 +18,8 @@ def login(username, password, clientSocket):
         'type': 'login',
         'username': username,
         'password': password,
+        'clientIP': clientIP,
+        'clientUDP': client_udp_port,
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
 
@@ -83,11 +85,26 @@ def broadcastMessage(username, clientSocket, messageToBroadcast):
         'messageToBroadcast': messageToBroadcast,
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-    
-    pass
 
-def displayActiveUsers():
-    pass
+def displayActiveUsers(username, clientSocket):
+    message = {
+        'type': 'ATU',
+        'username': username,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        # print(type(response))
+        users = response['otherActiveUsers']
+        if len(users) == 0:
+            print('No active users active.')
+        for user in users:
+            if user[0] == username:
+                continue
+            print(f'    > {user[0]}, active since {user[1]}')
+        break
 
 def separateRoomBuilding():
     pass
@@ -99,12 +116,12 @@ def readMessage():
     pass
 
 def connectToServer(host, port, client_udp_port):
-    serverHost = host
+    clientIP = host
     serverPort = port
     # define a socket for the client side, it would be used to communicate with the server
     clientSocket = socket(AF_INET, SOCK_STREAM)
     # build connection with the server and send message to it
-    clientSocket.connect((serverHost, serverPort))
+    clientSocket.connect((clientIP, serverPort))
 
     # Login attempts
     username = input('> Username: ')
@@ -124,10 +141,10 @@ def connectToServer(host, port, client_udp_port):
                 print('> Please write a message')
                 continue
             messageToBroadcast = command.split(' ', 1)[1]
-            print(messageToBroadcast)
+            # print(messageToBroadcast)
             broadcastMessage(username, clientSocket, messageToBroadcast)
         elif command[0:3] == 'ATU':
-            displayActiveUsers()
+            displayActiveUsers(username, clientSocket)
         elif command[0:3] == 'SRB':
             separateRoomBuilding()
         elif command[0:3] == 'SRM':
@@ -143,8 +160,8 @@ if __name__ == '__main__':
     if len(sys.argv) != 4:
         print("\n===== Error usage, python3 TCPClient3.py SERVER_IP SERVER_PORT CLIENT_UDP_PORT ======\n")
         exit(0)
-    serverHost = sys.argv[1]
+    clientIP = sys.argv[1]
     serverPort = int(sys.argv[2])
     client_udp_port = int(sys.argv[3])
-    # serverAddress = (serverHost, serverPort)
-    connectToServer(serverHost, serverPort, client_udp_port)
+    # serverAddress = (clientIP, serverPort)
+    connectToServer(clientIP, serverPort, client_udp_port)
