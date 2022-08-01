@@ -18,6 +18,8 @@ def login(username, password, clientSocket):
         'type': 'login',
         'username': username,
         'password': password,
+        'clientIP': clientIP,
+        'clientUDP': client_udp_port,
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
 
@@ -99,12 +101,12 @@ def readMessage():
     pass
 
 def connectToServer(host, port, client_udp_port):
-    serverHost = host
+    clientIP = host
     serverPort = port
     # define a socket for the client side, it would be used to communicate with the server
     clientSocket = socket(AF_INET, SOCK_STREAM)
     # build connection with the server and send message to it
-    clientSocket.connect((serverHost, serverPort))
+    clientSocket.connect((clientIP, serverPort))
 
     # Login attempts
     username = input('> Username: ')
@@ -143,8 +145,8 @@ if __name__ == '__main__':
     if len(sys.argv) != 4:
         print("\n===== Error usage, python3 TCPClient3.py SERVER_IP SERVER_PORT CLIENT_UDP_PORT ======\n")
         exit(0)
-    serverHost = sys.argv[1]
+    clientIP = sys.argv[1]
     serverPort = int(sys.argv[2])
     client_udp_port = int(sys.argv[3])
-    # serverAddress = (serverHost, serverPort)
-    connectToServer(serverHost, serverPort, client_udp_port)
+    # serverAddress = (clientIP, serverPort)
+    connectToServer(clientIP, serverPort, client_udp_port)

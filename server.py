@@ -30,10 +30,14 @@ serverAddress = (serverHost, serverPort)
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(serverAddress)
 
+# Clear .txt logs
+open('userlog.txt', 'w').close()
 open('messagelog.txt', 'w').close()
 
-# define structure for users and the time they login
+# define structure for users and the time they login, and messages and their timestamps
+global clientStatus, activeUsers, messages
 clientStatus = {}
+activeUsers = []
 messages = []
 
 """
@@ -83,6 +87,7 @@ class ClientThread(Thread):
                 self.clientAlive = False
                 user = message['username']
                 print(f'> ' + user + ' has logged out')
+                self.process_logout(message)
                 continue
             elif message['type'] == 'BCM':
                 print("[recv] Broadcast message requested")
@@ -113,9 +118,6 @@ class ClientThread(Thread):
                 pairs = user.split(' ')
                 credentials[pairs[0]] = pairs[1].strip()
 
-        # print(credentials)
-        # print(message)
-
         # Blocking of user
         if 'block' in message and message['block'] == True:
             self.clientAlive = False
@@ -128,41 +130,72 @@ class ClientThread(Thread):
             return
 
         if message['username'] in credentials:
-            
             # Logic underneath deals with blocked user first
             dt = datetime.now()
             ts = datetime.timestamp(dt)
             if message['username'] in clientStatus and ts - clientStatus[message['username']] < 10:
                 print('logged in b4 10 secoinds cuz')
-                message = 'LOCKED USER'
-                print(message)
+                response = 'LOCKED USER'
+                print(response)
                 self.clientAlive = False
-                self.clientSocket.send(message.encode())
+                self.clientSocket.send(response.encode())
                 return
 
             if message['password'] == credentials[message['username']]: 
-                print("CORRECT Credentials")
-                message = 'AUTHENTICATED'
-                print(message)
-                self.clientSocket.send(message.encode())
+                dt = datetime.now()
+                ts = datetime.timestamp(dt)
+
+                user = message['username']
+                formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
+                clientIP = message['clientIP']
+                clientUDP = message['clientUDP']
+
+                activeUsers.append((user, formatTimestamp, clientIP, clientUDP))
+                # count = len(activeUsers)
+                print(activeUsers)
+                response = 'AUTHENTICATED'
+                self.clientSocket.send(response.encode())
+
+                # Userlog things
+                open('userlog.txt', 'w').close()
+                with open('userlog.txt', mode='a') as log:
+                    i = 0
+                    seqNum = 1
+                    while i < len(activeUsers):
+                        # appendToUserLog = f'{activeUsers[i]}'
+                        appendToUserLog = f'{seqNum}; {activeUsers[i][1]}; {activeUsers[i][0]}; {activeUsers[i][2]}; {activeUsers[i][3]}'
+                        log.write(appendToUserLog + '\n')
+                        i += 1
+                        seqNum += 1
             else:
                 print("INCORRECT Password")
                 # message = 'INVALID CREDENTIALS'
-                message = str(number_of_consecutive_failed_attempts)
-                print(message)
-                self.clientSocket.send(message.encode())
+                response = str(number_of_consecutive_failed_attempts)
+                print(response)
+                self.clientSocket.send(response.encode())
         else:
             # print("INCORRECT Credentials")
             # message = 'INVALID CREDENTIALS'
-            message = str(number_of_consecutive_failed_attempts)
-            print(message)
-            self.clientSocket.send(message.encode())
+            response = str(number_of_consecutive_failed_attempts)
+            print(response)
+            self.clientSocket.send(response.encode())
 
     def process_logout(self, message):
-        message = 'logout requested'
-        print('[send] ' + message)
-        self.clientAlive = False
-        self.clientSocket.send(message.encode())
+        global activeUsers
+        activeUsers = list(filter(lambda x: x[0] != message['username'], activeUsers))
+
+        print("active users: " + str(activeUsers))
+        open('userlog.txt', 'w').close()
+
+        with open('userlog.txt', mode='a') as log:
+            i = 0
+            seqNum = 1
+            while i < len(activeUsers):
+                # appendToUserLog = f'{activeUsers[i]}'
+                appendToUserLog = f'{seqNum}; {activeUsers[i][1]}; {activeUsers[i][0]}; {activeUsers[i][2]}; {activeUsers[i][3]}'
+                log.write(appendToUserLog + '\n')
+                i += 1
+                seqNum += 1
 
     def broadcastMessage(self, message):
         dt = datetime.now()
