@@ -14,7 +14,7 @@ import json
 import os
 from datetime import datetime
 
-import glob
+import re
 
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
@@ -35,9 +35,6 @@ serverSocket.bind(serverAddress)
 # Clear .txt logs
 open('userlog.txt', 'w').close()
 open('messagelog.txt', 'w').close()
-
-for f in glob.glob(".*messagelog.txt"):
-    os.remove(f)
 
 # define structure for users and the time they login, and messages and their timestamps
 global clientStatus, activeUsers, messages, rooms
@@ -226,10 +223,7 @@ class ClientThread(Thread):
     def createRoom(self, message):
         global rooms, activeUsers
 
-        print(activeUsers)
         separateRoomUsers = message['separateRoomUsers']
-        print(separateRoomUsers)
-
         for user in separateRoomUsers:
             if user not in list(zip(*activeUsers))[0] or user == message['username']:
                 response = {
@@ -240,14 +234,27 @@ class ClientThread(Thread):
 
         # Add user who requested back into room
         separateRoomUsers.append(message['username'])
-        rooms.append(separateRoomUsers)
+        
+        for room in rooms:
+            if all(elem in room[1]  for elem in separateRoomUsers):
+                print(f'Separate chat room has been created, room ID: {room[0]}, already created for these users')
+                response = {
+                    'type': 'FAIL',
+                    'exists': True,
+                    'id': room[0]
+                }
+                self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+                return
+        
+        rooms.append((len(rooms) + 1, separateRoomUsers))
 
         response = {
             'type': 'SUCCESS',
         }
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
-        f = open(f'SR_{len(rooms)}_messagelog.txt', 'x')
+        f = open(f'SR_{len(rooms)}_messagelog.txt', 'w')
+        open(f'SR_{len(rooms)}_messagelog.txt', 'w').close()
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")
@@ -258,4 +265,7 @@ while True:
     clientThread = ClientThread(clientAddress, clientSockt)
     clientThread.start()
 
-print('run after ending')
+def removeSeparateRoomLog(dir, pattern):
+    for f in os.listdir(dir):
+        if re.search("SR_+\dmessagelog.txt", f):
+            os.remove(os.path.join(dir, f))
