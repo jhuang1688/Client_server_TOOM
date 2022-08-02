@@ -171,7 +171,6 @@ class ClientThread(Thread):
     def process_logout(self, message):
         global activeUsers
         activeUsers = list(filter(lambda x: x[0] != message['username'], activeUsers))
-
         # print("active users: " + str(activeUsers))
         open('userlog.txt', 'w').close()
         with open('userlog.txt', mode='a') as log:

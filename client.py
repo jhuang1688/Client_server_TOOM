@@ -52,19 +52,6 @@ def login(username, password, clientSocket):
             message['password'] = newpassword
             clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
             continue
-        # elif response == 'INVALID CREDENTIALS':
-        #     unsuccessfulLogin += 1
-        #     print("unsuccessfulLogin = " + str(unsuccessfulLogin))
-        #     if unsuccessfulLogin == 3:
-        #         print('Invalid Password. Your account has been blocked. Please try again later')
-        #         exit()
-        #     # print(response)
-        #     print('> Invalid Password. Please try again')
-        #     newpassword = input('> Password: ')
-        #     message['password'] = newpassword
-        #     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-        #     continue
-
     return
 
 def logout(username, clientSocket):
@@ -146,6 +133,8 @@ def connectToServer(host, port, client_udp_port):
         elif command[0:3] == 'ATU':
             displayActiveUsers(username, clientSocket)
         elif command[0:3] == 'SRB':
+            separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
+            print(separateRoomUsers)
             separateRoomBuilding()
         elif command[0:3] == 'SRM':
             separateRoomMessage()
