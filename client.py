@@ -86,15 +86,30 @@ def displayActiveUsers(username, clientSocket):
         # print(type(response))
         users = response['otherActiveUsers']
         if len(users) == 0:
-            print('No active users active.')
+            print('No other users active.')
         for user in users:
             if user[0] == username:
                 continue
             print(f'    > {user[0]}, active since {user[1]}')
         break
 
-def separateRoomBuilding():
-    pass
+def separateRoomBuilding(username, separateRoomUsers, clientSocket):
+    message = {
+        'type': 'SRB',
+        'username': username,
+        'separateRoomUsers': separateRoomUsers,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+
+        if response['type'] == 'FAIL':
+            print('One or more users are not active')
+            break
+        else:
+            break
 
 def separateRoomMessage():
     pass
@@ -133,9 +148,12 @@ def connectToServer(host, port, client_udp_port):
         elif command[0:3] == 'ATU':
             displayActiveUsers(username, clientSocket)
         elif command[0:3] == 'SRB':
+            if len(command) == 3:
+                print('Must add users to separate room service')
+                continue
             separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
             print(separateRoomUsers)
-            separateRoomBuilding()
+            separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
             separateRoomMessage()
         elif command[0:3] == 'RDM':

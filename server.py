@@ -14,6 +14,8 @@ import json
 import os
 from datetime import datetime
 
+import glob
+
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
     print("\n===== Error usage, python3 TCPServer3.py SERVER_PORT NUM_CONSECUTIVE_FAILED_ATTEMPTS ======\n")
@@ -34,11 +36,15 @@ serverSocket.bind(serverAddress)
 open('userlog.txt', 'w').close()
 open('messagelog.txt', 'w').close()
 
+for f in glob.glob(".*messagelog.txt"):
+    os.remove(f)
+
 # define structure for users and the time they login, and messages and their timestamps
-global clientStatus, activeUsers, messages
+global clientStatus, activeUsers, messages, rooms
 clientStatus = {}
 activeUsers = []
 messages = []
+rooms = []
 
 """
     Define multi-thread class for client
@@ -96,6 +102,11 @@ class ClientThread(Thread):
             elif message['type'] == 'ATU':
                 print("[recv] Download Active Users requested")
                 self.sendUsersToClient(message)
+                # print("[send] " + message)
+                # self.clientSocket.send(message.encode())
+            elif message['type'] == 'SRB':
+                print("[recv] Separate room creation requested")
+                self.createRoom(message)
                 # print("[send] " + message)
                 # self.clientSocket.send(message.encode())
             else:
@@ -211,8 +222,32 @@ class ClientThread(Thread):
         }
         print(response)
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
-        pass
+    
+    def createRoom(self, message):
+        global rooms, activeUsers
 
+        print(activeUsers)
+        separateRoomUsers = message['separateRoomUsers']
+        print(separateRoomUsers)
+
+        for user in separateRoomUsers:
+            if user not in list(zip(*activeUsers))[0] or user == message['username']:
+                response = {
+                    'type': 'FAIL',
+                }
+                self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+                return
+
+        # Add user who requested back into room
+        separateRoomUsers.append(message['username'])
+        rooms.append(separateRoomUsers)
+
+        response = {
+            'type': 'SUCCESS',
+        }
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+
+        f = open(f'SR_{len(rooms)}_messagelog.txt', 'x')
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")
