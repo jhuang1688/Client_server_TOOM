@@ -52,19 +52,6 @@ def login(username, password, clientSocket):
             message['password'] = newpassword
             clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
             continue
-        # elif response == 'INVALID CREDENTIALS':
-        #     unsuccessfulLogin += 1
-        #     print("unsuccessfulLogin = " + str(unsuccessfulLogin))
-        #     if unsuccessfulLogin == 3:
-        #         print('Invalid Password. Your account has been blocked. Please try again later')
-        #         exit()
-        #     # print(response)
-        #     print('> Invalid Password. Please try again')
-        #     newpassword = input('> Password: ')
-        #     message['password'] = newpassword
-        #     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-        #     continue
-
     return
 
 def logout(username, clientSocket):
@@ -99,18 +86,57 @@ def displayActiveUsers(username, clientSocket):
         # print(type(response))
         users = response['otherActiveUsers']
         if len(users) == 0:
-            print('No active users active.')
+            print('No other users active.')
         for user in users:
             if user[0] == username:
                 continue
             print(f'    > {user[0]}, active since {user[1]}')
         break
 
-def separateRoomBuilding():
-    pass
+def separateRoomBuilding(username, separateRoomUsers, clientSocket):
+    message = {
+        'type': 'SRB',
+        'username': username,
+        'separateRoomUsers': separateRoomUsers,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
 
-def separateRoomMessage():
-    pass
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+
+        if response['type'] == 'FAIL':
+            if 'exists' in response:
+                roomid = response['id']
+                print(f'A separate room (ID: {roomid}) already created for these users')
+                break
+            print('One or more users are not active')
+            break
+        else:
+            print(response['message'])
+            break
+
+def separateRoomMessage(username, roomID, messageToSend, clientSocket):
+    message = {
+        'type': 'SRM',
+        'username': username,
+        'roomID': roomID,
+        'messageToSend': messageToSend,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+
+        print(response['message'])
+        break
+        # if response['type'] == 'FAIL':
+        #     print(response['message'])
+        #     break
+        # else:
+        #     print('Success')
+        #     break
 
 def readMessage():
     pass
@@ -146,9 +172,19 @@ def connectToServer(host, port, client_udp_port):
         elif command[0:3] == 'ATU':
             displayActiveUsers(username, clientSocket)
         elif command[0:3] == 'SRB':
-            separateRoomBuilding()
+            if len(command) == 3:
+                print('Must add users to separate room service')
+                continue
+            separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
+            separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
-            separateRoomMessage()
+            if len(command) == 3:
+                print('Must room ID and message to send')
+                continue
+            srm = command.split(' ', 2)
+            roomID = srm[1]
+            messageToSend = srm[2]
+            separateRoomMessage(username, roomID, messageToSend, clientSocket)
         elif command[0:3] == 'RDM':
             readMessage()
         

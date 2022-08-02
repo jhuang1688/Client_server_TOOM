@@ -14,6 +14,8 @@ import json
 import os
 from datetime import datetime
 
+import re
+
 # acquire server host and port from command line parameter
 if len(sys.argv) != 3:
     print("\n===== Error usage, python3 TCPServer3.py SERVER_PORT NUM_CONSECUTIVE_FAILED_ATTEMPTS ======\n")
@@ -35,10 +37,11 @@ open('userlog.txt', 'w').close()
 open('messagelog.txt', 'w').close()
 
 # define structure for users and the time they login, and messages and their timestamps
-global clientStatus, activeUsers, messages
+global clientStatus, activeUsers, messages, rooms
 clientStatus = {}
 activeUsers = []
 messages = []
+rooms = []
 
 """
     Define multi-thread class for client
@@ -83,7 +86,6 @@ class ClientThread(Thread):
                 self.process_login(message)
             elif message['type'] == 'logout':
                 print("[recv] Logout requested")
-                # message = 'logout user'
                 self.clientAlive = False
                 user = message['username']
                 print(f'> ' + user + ' has logged out')
@@ -92,12 +94,16 @@ class ClientThread(Thread):
             elif message['type'] == 'BCM':
                 print("[recv] Broadcast message requested")
                 self.broadcastMessage(message)
-                # self.clientSocket.send(message.encode())
             elif message['type'] == 'ATU':
                 print("[recv] Download Active Users requested")
                 self.sendUsersToClient(message)
-                # print("[send] " + message)
-                # self.clientSocket.send(message.encode())
+            elif message['type'] == 'SRB':
+                print("[recv] Separate room creation requested")
+                self.createRoom(message)
+            elif message['type'] == 'SRM':
+                print("[recv] Separate room message requested")
+                print(rooms)
+                self.sendMessageInRoom(message)
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -171,7 +177,6 @@ class ClientThread(Thread):
     def process_logout(self, message):
         global activeUsers
         activeUsers = list(filter(lambda x: x[0] != message['username'], activeUsers))
-
         # print("active users: " + str(activeUsers))
         open('userlog.txt', 'w').close()
         with open('userlog.txt', mode='a') as log:
@@ -212,8 +217,99 @@ class ClientThread(Thread):
         }
         print(response)
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
-        pass
+    
+    def createRoom(self, message):
+        global rooms, activeUsers
 
+        separateRoomUsers = message['separateRoomUsers']
+        for user in separateRoomUsers:
+            if user not in list(zip(*activeUsers))[0] or user == message['username']:
+                response = {
+                    'type': 'FAIL',
+                }
+                self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+                return
+
+        # Add user who requested back into room
+        separateRoomUsers.append(message['username'])
+        
+        for room in rooms:
+            if all(elem in room[1]  for elem in separateRoomUsers):
+                print(f'Separate chat room has been created, room ID: {room[0]}, already created for these users')
+                response = {
+                    'type': 'FAIL',
+                    'exists': True,
+                    'id': room[0]
+                }
+                self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+                return
+        
+        rooms.append((len(rooms) + 1, separateRoomUsers))
+
+        formattedUsers = str(separateRoomUsers).replace("'", "")
+        formattedUsers = formattedUsers.replace("[", "")
+        formattedUsers = formattedUsers.replace("]", "")
+        responseMessage = f'> Separate chat room has been created, room ID: {len(rooms)}, users in this room: {formattedUsers}'
+
+        response = {
+            'type': 'SUCCESS',
+            'message': responseMessage
+        }
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+
+        f = open(f'SR_{len(rooms)}_messagelog.txt', 'w')
+        open(f'SR_{len(rooms)}_messagelog.txt', 'w').close()
+
+    def sendMessageInRoom(self, message):
+        global rooms
+
+        # Message timestamps
+        dt = datetime.now()
+        ts = datetime.timestamp(dt)
+        formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
+        
+        user = message['username']
+        roomID = message['roomID']
+        messageToSend = message['messageToSend']
+
+        if int(roomID) not in list(zip(*rooms))[0]:
+            print('Room does not exist')
+            response = {
+                'type': 'FAIL',
+                'message': 'The separate room does not exist!',
+            }
+            self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+            return
+
+        roomUsers = []
+        for room in rooms:
+            if room[0] == int(roomID):
+                roomUsers = room[1]
+
+        if message['username'] not in roomUsers:
+            print('User is not part of this room')
+            response = {
+                'type': 'FAIL',
+                'message': 'You are not in this separate room chat!',
+            }
+            self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+            return
+
+
+        with open(f"SR_{roomID}_messagelog.txt", 'r') as fp:
+            x = len(fp.readlines())
+
+        print(f'> {user} issued a message in separate room {roomID}: #{x + 1}; {formatTimestamp}; {user}; {messageToSend}')
+
+        appendToMessageLog = f'#{x + 1}; {formatTimestamp}; {user}; {messageToSend}'
+        with open(f"SR_{roomID}_messagelog.txt", mode='a') as log:
+          log.write(appendToMessageLog + '\n')
+
+        response = {
+            'type': 'SUCCESS',
+            'message': appendToMessageLog,
+        }
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")
@@ -223,5 +319,3 @@ while True:
     clientSockt, clientAddress = serverSocket.accept()
     clientThread = ClientThread(clientAddress, clientSockt)
     clientThread.start()
-
-print('run after ending')
