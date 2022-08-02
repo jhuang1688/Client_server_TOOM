@@ -86,7 +86,6 @@ class ClientThread(Thread):
                 self.process_login(message)
             elif message['type'] == 'logout':
                 print("[recv] Logout requested")
-                # message = 'logout user'
                 self.clientAlive = False
                 user = message['username']
                 print(f'> ' + user + ' has logged out')
@@ -95,17 +94,16 @@ class ClientThread(Thread):
             elif message['type'] == 'BCM':
                 print("[recv] Broadcast message requested")
                 self.broadcastMessage(message)
-                # self.clientSocket.send(message.encode())
             elif message['type'] == 'ATU':
                 print("[recv] Download Active Users requested")
                 self.sendUsersToClient(message)
-                # print("[send] " + message)
-                # self.clientSocket.send(message.encode())
             elif message['type'] == 'SRB':
                 print("[recv] Separate room creation requested")
                 self.createRoom(message)
-                # print("[send] " + message)
-                # self.clientSocket.send(message.encode())
+            elif message['type'] == 'SRM':
+                print("[recv] Separate room message requested")
+                print(rooms)
+                self.sendMessageInRoom(message)
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -255,6 +253,42 @@ class ClientThread(Thread):
 
         f = open(f'SR_{len(rooms)}_messagelog.txt', 'w')
         open(f'SR_{len(rooms)}_messagelog.txt', 'w').close()
+
+    def sendMessageInRoom(self, message):
+        global rooms
+        
+        user = message['username']
+        roomID = message['roomID']
+        messageToSend = message['messageToSend']
+
+        if int(roomID) not in list(zip(*rooms))[0]:
+            print('Room does not exist')
+            response = {
+                'type': 'FAIL',
+                'message': 'The separate room does not exist!',
+            }
+            self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+            return
+
+        roomUsers = []
+        for room in rooms:
+            if room[0] == int(roomID):
+                roomUsers = room[1]
+
+        if message['username'] not in roomUsers:
+            print('User is not part of this room')
+            response = {
+                'type': 'FAIL',
+                'message': 'You are not in this separate room chat!',
+            }
+            self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+            return
+
+        print("Room exists")
+        response = {
+            'type': 'SUCCESS',
+        }
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")

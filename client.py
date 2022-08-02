@@ -115,8 +115,25 @@ def separateRoomBuilding(username, separateRoomUsers, clientSocket):
         else:
             break
 
-def separateRoomMessage():
-    pass
+def separateRoomMessage(username, roomID, messageToSend, clientSocket):
+    message = {
+        'type': 'SRM',
+        'username': username,
+        'roomID': roomID,
+        'messageToSend': messageToSend,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+
+        if response['type'] == 'FAIL':
+            print(response['message'])
+            break
+        else:
+            print('Success')
+            break
 
 def readMessage():
     pass
@@ -158,7 +175,10 @@ def connectToServer(host, port, client_udp_port):
             separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
             separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
-            separateRoomMessage()
+            srm = command.split(' ', 2)
+            roomID = srm[1]
+            messageToSend = srm[2]
+            separateRoomMessage(username, roomID, messageToSend, clientSocket)
         elif command[0:3] == 'RDM':
             readMessage()
         
