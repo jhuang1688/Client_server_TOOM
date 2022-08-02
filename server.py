@@ -102,8 +102,13 @@ class ClientThread(Thread):
                 self.createRoom(message)
             elif message['type'] == 'SRM':
                 print("[recv] Separate room message requested")
-                print(rooms)
                 self.sendMessageInRoom(message)
+            elif message['type'] == 'RDM':
+                print("[recv] Read messages requested")
+                if message['messageType'] == 'b':
+                    self.readBroadcastedMessages(message)
+                else: 
+                    self.readSeparateRoomMessages(message)
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -310,6 +315,36 @@ class ClientThread(Thread):
             'message': appendToMessageLog,
         }
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+    
+    def readBroadcastedMessages(self, message):
+        global rooms
+        user = message['username']
+        messageTimestamp = message['timestamp']
+
+        element = datetime.strptime(messageTimestamp, '%d %b %Y %H:%M:%S')
+        timestamp = datetime.timestamp(element)
+        
+        readMessages = []
+        with open('messagelog.txt') as file:
+            for line in file.readlines():
+                messageInfo = line.split('; ')
+                element = datetime.strptime(messageInfo[1], '%d %b %Y %H:%M:%S')
+                logTimestamp = datetime.timestamp(element)
+                if logTimestamp > timestamp:
+                    readMessages.append(messageInfo)
+
+        response = {
+            'type': 'SUCCESS',
+            'readMessages': readMessages,
+        }
+        print(response)
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+    
+    def readSeparateRoomMessages(self, message):
+        global rooms
+        user = message['username']
+        timestamp = message['timestamp']
+
 
 print("\n===== Server is running =====")
 print("===== Waiting for connection request from clients...=====")

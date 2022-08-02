@@ -27,8 +27,6 @@ def login(username, password, clientSocket):
     while True:
         serverResponse = clientSocket.recv(1024)
         response = serverResponse.decode('utf-8')
-        #print('>>>>>>>>>>>>>>>>>>>>>>')
-        #print(response)
         if response == 'AUTHENTICATED':
             print('> Welcome to the TOOM!')
             break
@@ -38,15 +36,11 @@ def login(username, password, clientSocket):
             exit()
         else:
             unsuccessfulLogin += 1
-            # print(f'num attempts allowed: ' + str(response))
-            # print(int(response))
-            # print("unsuccessfulLogin = " + str(unsuccessfulLogin))
             if unsuccessfulLogin == int(response):
                 print('Invalid Password. Your account has been blocked. Please try again later')
                 message['block'] = True
                 clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
                 exit()
-            # print(response)
             print('> Invalid Password. Please try again')
             newpassword = input('> Password: ')
             message['password'] = newpassword
@@ -60,7 +54,6 @@ def logout(username, clientSocket):
         'username': username
     }
     clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
-    #print(tempid)
     print('Bye ' + username + '!')
     clientSocket.close()
     exit()
@@ -83,7 +76,6 @@ def displayActiveUsers(username, clientSocket):
     while True:
         serverResponse = clientSocket.recv(1024)
         response = json.loads(serverResponse.decode('utf-8'))
-        # print(type(response))
         users = response['otherActiveUsers']
         if len(users) == 0:
             print('No other users active.')
@@ -128,18 +120,34 @@ def separateRoomMessage(username, roomID, messageToSend, clientSocket):
     while True:
         serverResponse = clientSocket.recv(1024)
         response = json.loads(serverResponse.decode('utf-8'))
-
         print(response['message'])
         break
-        # if response['type'] == 'FAIL':
-        #     print(response['message'])
-        #     break
-        # else:
-        #     print('Success')
-        #     break
 
-def readMessage():
-    pass
+def readMessage(username, messageType, timestamp, clientSocket):
+    message = {
+        'type': 'RDM',
+        'username': username,
+        'messageType': messageType,
+        'timestamp': timestamp,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+
+        readMessages = response['readMessages']
+        if len(readMessages) == 0:
+            print("    > No missed broadcasted messages!")
+        else:
+            print(f"Messages broadcasted since {timestamp}:")
+            for line in readMessages:
+                seq = line[0]
+                user = line[2]
+                time = line[3]
+                time = time.replace('\n', '')
+                print(f"    #{seq}; {user}: {time}")
+        break
 
 def connectToServer(host, port, client_udp_port):
     clientIP = host
@@ -167,7 +175,6 @@ def connectToServer(host, port, client_udp_port):
                 print('> Please write a message')
                 continue
             messageToBroadcast = command.split(' ', 1)[1]
-            # print(messageToBroadcast)
             broadcastMessage(username, clientSocket, messageToBroadcast)
         elif command[0:3] == 'ATU':
             displayActiveUsers(username, clientSocket)
@@ -179,14 +186,20 @@ def connectToServer(host, port, client_udp_port):
             separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
             if len(command) == 3:
-                print('Must room ID and message to send')
+                print('Must have room ID and message to send')
                 continue
             srm = command.split(' ', 2)
             roomID = srm[1]
             messageToSend = srm[2]
             separateRoomMessage(username, roomID, messageToSend, clientSocket)
         elif command[0:3] == 'RDM':
-            readMessage()
+            if len(command) == 3:
+                print('Must have message type and timestamp')
+                continue
+            rdm = command.split(' ', 2)
+            messageType = rdm[1]
+            timestamp = rdm[2]
+            readMessage(username, messageType, timestamp, clientSocket)
         
     # close the socket
     clientSocket.close()
