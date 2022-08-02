@@ -108,11 +108,12 @@ def separateRoomBuilding(username, separateRoomUsers, clientSocket):
         if response['type'] == 'FAIL':
             if 'exists' in response:
                 roomid = response['id']
-                print(f'Separate chat room has been created, room ID: {roomid}, already created for these users')
+                print(f'A separate room (ID: {roomid}) already created for these users')
                 break
             print('One or more users are not active')
             break
         else:
+            print(response['message'])
             break
 
 def separateRoomMessage(username, roomID, messageToSend, clientSocket):
@@ -128,12 +129,14 @@ def separateRoomMessage(username, roomID, messageToSend, clientSocket):
         serverResponse = clientSocket.recv(1024)
         response = json.loads(serverResponse.decode('utf-8'))
 
-        if response['type'] == 'FAIL':
-            print(response['message'])
-            break
-        else:
-            print('Success')
-            break
+        print(response['message'])
+        break
+        # if response['type'] == 'FAIL':
+        #     print(response['message'])
+        #     break
+        # else:
+        #     print('Success')
+        #     break
 
 def readMessage():
     pass
@@ -175,6 +178,9 @@ def connectToServer(host, port, client_udp_port):
             separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
             separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
+            if len(command) == 3:
+                print('Must room ID and message to send')
+                continue
             srm = command.split(' ', 2)
             roomID = srm[1]
             messageToSend = srm[2]

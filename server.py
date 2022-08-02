@@ -246,8 +246,14 @@ class ClientThread(Thread):
         
         rooms.append((len(rooms) + 1, separateRoomUsers))
 
+        formattedUsers = str(separateRoomUsers).replace("'", "")
+        formattedUsers = formattedUsers.replace("[", "")
+        formattedUsers = formattedUsers.replace("]", "")
+        responseMessage = f'> Separate chat room has been created, room ID: {len(rooms)}, users in this room: {formattedUsers}'
+
         response = {
             'type': 'SUCCESS',
+            'message': responseMessage
         }
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
@@ -256,6 +262,11 @@ class ClientThread(Thread):
 
     def sendMessageInRoom(self, message):
         global rooms
+
+        # Message timestamps
+        dt = datetime.now()
+        ts = datetime.timestamp(dt)
+        formatTimestamp = dt.strftime('%d %b %Y %H:%M:%S')
         
         user = message['username']
         roomID = message['roomID']
@@ -284,9 +295,19 @@ class ClientThread(Thread):
             self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
             return
 
-        print("Room exists")
+
+        with open(f"SR_{roomID}_messagelog.txt", 'r') as fp:
+            x = len(fp.readlines())
+
+        print(f'> {user} issued a message in separate room {roomID}: #{x + 1}; {formatTimestamp}; {user}; {messageToSend}')
+
+        appendToMessageLog = f'#{x + 1}; {formatTimestamp}; {user}; {messageToSend}'
+        with open(f"SR_{roomID}_messagelog.txt", mode='a') as log:
+          log.write(appendToMessageLog + '\n')
+
         response = {
             'type': 'SUCCESS',
+            'message': appendToMessageLog,
         }
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
@@ -298,8 +319,3 @@ while True:
     clientSockt, clientAddress = serverSocket.accept()
     clientThread = ClientThread(clientAddress, clientSockt)
     clientThread.start()
-
-def removeSeparateRoomLog(dir, pattern):
-    for f in os.listdir(dir):
-        if re.search("SR_+\dmessagelog.txt", f):
-            os.remove(os.path.join(dir, f))
