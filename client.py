@@ -12,7 +12,7 @@ import json
 import os
 import datetime
 
-COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
+COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT', 'UDP']
 
 def login(username, password, clientSocket):
     message = {
@@ -144,10 +144,11 @@ def readBroadcastMessage(username, messageType, timestamp, clientSocket):
             print(f"Messages broadcasted since {timestamp}:")
             for line in readMessages:
                 seq = line[0]
+                time = line[1]
                 user = line[2]
-                time = line[3]
-                time = time.replace('\n', '')
-                print(f"    #{seq}; {user}: {time}")
+                message = line[3]
+                message = message.replace('\n', '')
+                print(f"    #{seq}; {user}: {message} at {time}")
         break
 
 def readSepRoomMessage(username, messageType, timestamp, clientSocket):
@@ -174,12 +175,15 @@ def readSepRoomMessage(username, messageType, timestamp, clientSocket):
                     continue
                 for msg in room[1]:
                     seq = msg[0]
+                    time = msg[1]
                     user = msg[2]
-                    time = msg[3]
-                    time = time.replace('\n', '')
-                    print(f"    #{seq}; {user}: {time}")
-
+                    message = msg[3]
+                    message = message.replace('\n', '')
+                    print(f"    #{seq}; {user}: {message} at {time}")
         break
+
+def uploadFile(username, user, filename, clientSocket):
+    pass
 
 def connectToServer(host, port, client_udp_port):
     clientIP = host
@@ -233,15 +237,23 @@ def connectToServer(host, port, client_udp_port):
             timestamp = rdm[2]
             try:
                 datetime.datetime.strptime(timestamp, '%d %b %Y %H:%M:%S')
-                # print("This is the correct date string format.")
             except ValueError:
                 print("This is the incorrect date string format")
+                print("Please enter in the form dd MON HH:MM:SS")
                 continue
             if messageType == 'b':
                 readBroadcastMessage(username, messageType, timestamp, clientSocket)
             if messageType == 's':
                 readSepRoomMessage(username, messageType, timestamp, clientSocket)
-        
+        elif command[0:3] == 'UDP':
+            if len(command) == 3:
+                print('Must have user and file name')
+                continue
+            udp = command.split(' ', 2)
+            user = udp[1]
+            filename = udp[2]
+            uploadFile(username, user, filename, clientSocket)
+            
     # close the socket
     clientSocket.close()
 
