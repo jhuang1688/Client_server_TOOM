@@ -10,8 +10,9 @@ from socket import *
 import sys
 import json
 import os
+import datetime
 
-COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
+COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT', 'UDP']
 
 def login(username, password, clientSocket):
     message = {
@@ -123,9 +124,9 @@ def separateRoomMessage(username, roomID, messageToSend, clientSocket):
         print(response['message'])
         break
 
-def readMessage(username, messageType, timestamp, clientSocket):
+def readBroadcastMessage(username, messageType, timestamp, clientSocket):
     message = {
-        'type': 'RDM',
+        'type': 'RDM b',
         'username': username,
         'messageType': messageType,
         'timestamp': timestamp,
@@ -143,11 +144,46 @@ def readMessage(username, messageType, timestamp, clientSocket):
             print(f"Messages broadcasted since {timestamp}:")
             for line in readMessages:
                 seq = line[0]
+                time = line[1]
                 user = line[2]
-                time = line[3]
-                time = time.replace('\n', '')
-                print(f"    #{seq}; {user}: {time}")
+                message = line[3]
+                message = message.replace('\n', '')
+                print(f"    #{seq}; {user}: {message} at {time}")
         break
+
+def readSepRoomMessage(username, messageType, timestamp, clientSocket):
+    message = {
+        'type': 'RDM s',
+        'username': username,
+        'messageType': messageType,
+        'timestamp': timestamp,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        readMessages = response['readMessages']
+        if len(readMessages) == 0:
+            print("    > No missed separate room messages!")
+        else:
+            for room in readMessages:
+                roomID = room[0]
+                print(f'room-{roomID}:')
+                if len(room[1]) == 0:
+                    print(f'    No new messages in room {roomID}')
+                    continue
+                for msg in room[1]:
+                    seq = msg[0]
+                    time = msg[1]
+                    user = msg[2]
+                    message = msg[3]
+                    message = message.replace('\n', '')
+                    print(f"    #{seq}; {user}: {message} at {time}")
+        break
+
+def uploadFile(username, user, filename, clientSocket):
+    pass
 
 def connectToServer(host, port, client_udp_port):
     clientIP = host
@@ -199,8 +235,25 @@ def connectToServer(host, port, client_udp_port):
             rdm = command.split(' ', 2)
             messageType = rdm[1]
             timestamp = rdm[2]
-            readMessage(username, messageType, timestamp, clientSocket)
-        
+            try:
+                datetime.datetime.strptime(timestamp, '%d %b %Y %H:%M:%S')
+            except ValueError:
+                print("This is the incorrect date string format")
+                print("Please enter in the form dd MON HH:MM:SS")
+                continue
+            if messageType == 'b':
+                readBroadcastMessage(username, messageType, timestamp, clientSocket)
+            if messageType == 's':
+                readSepRoomMessage(username, messageType, timestamp, clientSocket)
+        elif command[0:3] == 'UDP':
+            if len(command) == 3:
+                print('Must have user and file name')
+                continue
+            udp = command.split(' ', 2)
+            user = udp[1]
+            filename = udp[2]
+            uploadFile(username, user, filename, clientSocket)
+            
     # close the socket
     clientSocket.close()
 

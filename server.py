@@ -103,12 +103,12 @@ class ClientThread(Thread):
             elif message['type'] == 'SRM':
                 print("[recv] Separate room message requested")
                 self.sendMessageInRoom(message)
-            elif message['type'] == 'RDM':
+            elif message['type'] == 'RDM b':
                 print("[recv] Read messages requested")
-                if message['messageType'] == 'b':
-                    self.readBroadcastedMessages(message)
-                else: 
-                    self.readSeparateRoomMessages(message)
+                self.readBroadcastedMessages(message)
+            elif message['type'] == 'RDM s':
+                print("[recv] Read messages requested")
+                self.readSeparateRoomMessages(message)
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -317,7 +317,6 @@ class ClientThread(Thread):
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
     
     def readBroadcastedMessages(self, message):
-        global rooms
         user = message['username']
         messageTimestamp = message['timestamp']
 
@@ -343,7 +342,36 @@ class ClientThread(Thread):
     def readSeparateRoomMessages(self, message):
         global rooms
         user = message['username']
-        timestamp = message['timestamp']
+        messageTimestamp = message['timestamp']
+
+        element = datetime.strptime(messageTimestamp, '%d %b %Y %H:%M:%S')
+        timestamp = datetime.timestamp(element)
+
+        userInRooms = []
+        for room in rooms:
+            if user in room[1]:
+                userInRooms.append(room)
+                continue
+
+        returnResponse = []
+        for room in userInRooms:
+            roomID = room[0]
+            readMessages = []
+            with open(f'SR_{roomID}_messagelog.txt') as file:
+                for line in file.readlines():
+                    messageInfo = line.split('; ')
+                    element = datetime.strptime(messageInfo[1], '%d %b %Y %H:%M:%S')
+                    logTimestamp = datetime.timestamp(element)
+                    if logTimestamp > timestamp:
+                        readMessages.append(messageInfo)
+            returnResponse.append((roomID, readMessages))
+
+        response = {
+            'type': 'SUCCESS',
+            'readMessages': returnResponse,
+        }
+        print(response)
+        self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
 
 print("\n===== Server is running =====")
