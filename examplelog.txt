@@ -1,0 +1,5 @@
+1; 03 Aug 2022 02:11:25; a; hello
+2; 03 Aug 2022 02:11:31; b; hello to you too
+3; 03 Aug 2022 02:11:38; c; whaddup lads
+4; 03 Aug 2022 02:11:46; a; not much
+5; 03 Aug 2022 02:11:58; b; nice to meet u lads
