@@ -10,6 +10,7 @@ from socket import *
 import sys
 import json
 import os
+import datetime
 
 COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT']
 
@@ -123,9 +124,9 @@ def separateRoomMessage(username, roomID, messageToSend, clientSocket):
         print(response['message'])
         break
 
-def readMessage(username, messageType, timestamp, clientSocket):
+def readBroadcastMessage(username, messageType, timestamp, clientSocket):
     message = {
-        'type': 'RDM',
+        'type': 'RDM b',
         'username': username,
         'messageType': messageType,
         'timestamp': timestamp,
@@ -147,6 +148,37 @@ def readMessage(username, messageType, timestamp, clientSocket):
                 time = line[3]
                 time = time.replace('\n', '')
                 print(f"    #{seq}; {user}: {time}")
+        break
+
+def readSepRoomMessage(username, messageType, timestamp, clientSocket):
+    message = {
+        'type': 'RDM s',
+        'username': username,
+        'messageType': messageType,
+        'timestamp': timestamp,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        readMessages = response['readMessages']
+        if len(readMessages) == 0:
+            print("    > No missed separate room messages!")
+        else:
+            for room in readMessages:
+                roomID = room[0]
+                print(f'room-{roomID}:')
+                if len(room[1]) == 0:
+                    print(f'    No new messages in room {roomID}')
+                    continue
+                for msg in room[1]:
+                    seq = msg[0]
+                    user = msg[2]
+                    time = msg[3]
+                    time = time.replace('\n', '')
+                    print(f"    #{seq}; {user}: {time}")
+
         break
 
 def connectToServer(host, port, client_udp_port):
@@ -199,7 +231,16 @@ def connectToServer(host, port, client_udp_port):
             rdm = command.split(' ', 2)
             messageType = rdm[1]
             timestamp = rdm[2]
-            readMessage(username, messageType, timestamp, clientSocket)
+            try:
+                datetime.datetime.strptime(timestamp, '%d %b %Y %H:%M:%S')
+                # print("This is the correct date string format.")
+            except ValueError:
+                print("This is the incorrect date string format")
+                continue
+            if messageType == 'b':
+                readBroadcastMessage(username, messageType, timestamp, clientSocket)
+            if messageType == 's':
+                readSepRoomMessage(username, messageType, timestamp, clientSocket)
         
     # close the socket
     clientSocket.close()
