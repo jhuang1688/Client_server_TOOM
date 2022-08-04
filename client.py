@@ -83,7 +83,7 @@ def displayActiveUsers(username, clientSocket):
         for user in users:
             if user[0] == username:
                 continue
-            print(f'    > {user[0]}, active since {user[1]}')
+            print(f'    > {user[0]}, {user[2]}; {user[3]}; active since {user[1]}')
         break
 
 def separateRoomBuilding(username, separateRoomUsers, clientSocket):
@@ -202,9 +202,7 @@ def connectToServer(host, port, client_udp_port):
     while True:
         command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
 
-        if command[0:3] not in COMMANDS:
-            print("> Error. Invalid command!")
-        elif command[0:3] == 'OUT':
+        if command[0:3] == 'OUT':
             logout(username, clientSocket)
         elif command[0:3] == 'BCM':
             if command == 'BCM':
@@ -253,6 +251,8 @@ def connectToServer(host, port, client_udp_port):
             user = udp[1]
             filename = udp[2]
             uploadFile(username, user, filename, clientSocket)
+        else:
+            print("> Error. Invalid command!")
             
     # close the socket
     clientSocket.close()
