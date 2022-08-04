@@ -12,6 +12,8 @@ import json
 import os
 import datetime
 
+from _thread import *
+
 COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT', 'UDP']
 
 def login(username, password, clientSocket):
@@ -183,8 +185,62 @@ def readSepRoomMessage(username, messageType, timestamp, clientSocket):
         break
 
 def uploadFile(username, user, filename, clientSocket):
-    
-    pass
+    message = {
+        'type': 'UDP',
+        'userToRetrieve': user,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    response = {}
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        break
+
+    # print(response)
+    sendFile(username, response['userIP'], response['userUDP'], filename)
+
+def sendFile(username, ip, port, filename):
+    serverIP = ip
+    serverPort = int(port)
+    clientSocket = socket(AF_INET, SOCK_DGRAM)
+    # clientSocket.connect((serverIP, serverPort))
+
+    # message = f'{filename}'
+    message = {
+        'filename': filename,
+        'recvUser': username,
+    }
+    # print(message)
+    # clientSocket.send(bytes(message,encoding='utf-8'))
+    clientSocket.sendto(bytes(json.dumps(message),encoding='utf-8'),(serverIP, serverPort))
+    clientSocket.close()
+    return
+
+def createReceiverServer(ip, port):
+    serverIP = ip
+    serverPort = int(port)
+
+    serverSocket = socket(AF_INET, SOCK_DGRAM)
+    serverSocket.bind((serverIP, serverPort))
+    try:
+        start_new_thread(receiveFile, (serverSocket, ))
+        # print('thread created')
+        # print(serverIP)
+        # print(serverPort)
+    except:
+        print('Thread not started')
+
+def receiveFile(serverSocket):
+    # print('\nready to recv')
+    while True:
+        message, clientAddress = serverSocket.recvfrom(2048)
+        response = json.loads(message.decode('utf-8'))
+        # print(response)
+        filename = response['filename']
+        user = response['recvUser']
+        print(f'\n> Received {filename} from {user}')
+        print("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT or UDP): ")
+        # break
 
 def connectToServer(host, port, client_udp_port):
     clientIP = host
@@ -200,8 +256,11 @@ def connectToServer(host, port, client_udp_port):
     
     login(username, password, clientSocket)
 
+    # Create UDP receiver server
+    createReceiverServer(clientIP, client_udp_port)
+
     while True:
-        command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+        command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT or UDP): ")
 
         if command[0:3] == 'OUT':
             logout(username, clientSocket)
@@ -251,7 +310,13 @@ def connectToServer(host, port, client_udp_port):
             udp = command.split(' ', 2)
             user = udp[1]
             filename = udp[2]
-            uploadFile(username, user, filename, clientSocket)
+            try:
+                f = open(f"{filename}")
+                # Do something with the file
+                uploadFile(username, user, filename, clientSocket)
+            except IOError:
+                print("File not accessible")
+                continue
         else:
             print("> Error. Invalid command!")
             

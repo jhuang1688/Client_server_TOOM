@@ -109,6 +109,9 @@ class ClientThread(Thread):
             elif message['type'] == 'RDM s':
                 print("[recv] Read messages requested")
                 self.readSeparateRoomMessages(message)
+            elif message['type'] == 'UDP':
+                print("[recv] Other user details requested")
+                self.sendUserDetails(message)
             else:
                 print("[recv] " + message)
                 print("[send] Cannot understand this message")
@@ -374,6 +377,20 @@ class ClientThread(Thread):
         }
         # print(response)
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+    
+    def sendUserDetails(self, message):
+        global activeUsers
+        # print(message)
+        # print(activeUsers)
+
+        for user in activeUsers:
+            if user[0] == message['userToRetrieve']:
+                response = {
+                    'userIP': user[2],
+                    'userUDP': user[3],
+                }
+                self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
+                break
 
 
 print("\n===== Server is running =====")
