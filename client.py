@@ -12,6 +12,8 @@ import json
 import os
 import datetime
 
+from _thread import *
+
 COMMANDS = ['BCM', 'ATU', 'SRB', 'SRM', 'RDM', 'OUT', 'UDP']
 
 def login(username, password, clientSocket):
@@ -183,8 +185,54 @@ def readSepRoomMessage(username, messageType, timestamp, clientSocket):
         break
 
 def uploadFile(username, user, filename, clientSocket):
-    
-    pass
+    message = {
+        'type': 'UDP',
+        'userToRetrieve': user,
+    }
+    clientSocket.send(bytes(json.dumps(message),encoding='utf-8'))
+    response = {}
+    while True:
+        serverResponse = clientSocket.recv(1024)
+        response = json.loads(serverResponse.decode('utf-8'))
+        break
+
+    print(response)
+    sendFile(response['userIP'], response['userUDP'], filename)
+
+def sendFile(ip, port, filename):
+    serverIP = ip
+    serverPort = int(port)
+    clientSocket = socket(AF_INET, SOCK_DGRAM)
+    # clientSocket.connect((serverIP, serverPort))
+
+    message = f'{filename}'
+    print(message)
+    # clientSocket.send(bytes(message,encoding='utf-8'))
+    clientSocket.sendto(message.encode('utf-8'),(serverIP, serverPort))
+    clientSocket.close()
+    return
+
+def createReceiverServer(ip, port):
+    serverIP = ip
+    serverPort = int(port)
+
+    serverSocket = socket(AF_INET, SOCK_DGRAM)
+    serverSocket.bind((serverIP, serverPort))
+    try:
+        start_new_thread(receiveFile, (serverSocket, ))
+        # print('thread created')
+        # print(serverIP)
+        # print(serverPort)
+    except:
+        print('Thread not started')
+
+def receiveFile(serverSocket):
+    # print('\nready to recv')
+    while True:
+        message, clientAddress = serverSocket.recvfrom(2048)
+        print(f'\n{message}')
+        print("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
+        break
 
 def connectToServer(host, port, client_udp_port):
     clientIP = host
@@ -199,6 +247,9 @@ def connectToServer(host, port, client_udp_port):
     password = input('> Password: ')
     
     login(username, password, clientSocket)
+
+    # Create UDP receiver server
+    createReceiverServer(clientIP, client_udp_port)
 
     while True:
         command = input("> Enter one of the following commands (BCM, ATU, SRB, SRM, RDM, OUT): ")
