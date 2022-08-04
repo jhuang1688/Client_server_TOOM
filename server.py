@@ -338,7 +338,7 @@ class ClientThread(Thread):
             'type': 'SUCCESS',
             'readMessages': readMessages,
         }
-        print(response)
+        # print(response)
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
     
     def readSeparateRoomMessages(self, message):
@@ -372,7 +372,7 @@ class ClientThread(Thread):
             'type': 'SUCCESS',
             'readMessages': returnResponse,
         }
-        print(response)
+        # print(response)
         self.clientSocket.send(bytes(json.dumps(response),encoding='utf-8'))
 
 
