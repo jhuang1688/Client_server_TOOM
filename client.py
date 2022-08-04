@@ -183,6 +183,7 @@ def readSepRoomMessage(username, messageType, timestamp, clientSocket):
         break
 
 def uploadFile(username, user, filename, clientSocket):
+    
     pass
 
 def connectToServer(host, port, client_udp_port):
@@ -219,7 +220,7 @@ def connectToServer(host, port, client_udp_port):
             separateRoomUsers = (command.split(' ', 1)[1]).split(' ')
             separateRoomBuilding(username, separateRoomUsers, clientSocket)
         elif command[0:3] == 'SRM':
-            if len(command) == 3:
+            if len(command) == 3 or len(command.split(' ')) < 3:
                 print('Must have room ID and message to send')
                 continue
             srm = command.split(' ', 2)
