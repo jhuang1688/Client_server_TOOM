@@ -144,6 +144,8 @@ class ClientThread(Thread):
             ts = datetime.timestamp(dt)
             if message['username'] in clientStatus and ts - clientStatus[message['username']] < 10:
                 self.clientAlive = False
+                # self.clientSocket.send(response.encode())
+                response = 'LOCKED USER'
                 self.clientSocket.send(response.encode())
                 return
 
