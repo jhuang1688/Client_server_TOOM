@@ -33,8 +33,20 @@ serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(serverAddress)
 
 # Clear .txt logs
-open('userlog.txt', 'w').close()
-open('messagelog.txt', 'w').close()
+try:
+    open('userlog.txt', 'w').close()
+except FileNotFoundError:
+    open('userlog.txt', 'a').close()
+
+
+try:    
+    open('messagelog.txt', 'w').close()
+except FileNotFoundError:
+    open('messagelog.txt', 'a').close()
+
+
+# open('userlog.txt', 'w').close()
+# open('messagelog.txt', 'w').close()
 
 # define structure for users and the time they login, and messages and their timestamps
 global clientStatus, activeUsers, messages, rooms
